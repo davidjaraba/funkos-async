@@ -6,7 +6,7 @@ import org.apache.ibatis.jdbc.ScriptRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.text.html.Option;
+
 import java.io.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -25,7 +25,7 @@ public class DatabaseManager {
 
 
 
-    public static DatabaseManager getInstance() {
+    public static synchronized DatabaseManager getInstance() {
 
         if (instance == null) {
 
@@ -38,9 +38,8 @@ public class DatabaseManager {
     }
 
     public Optional<Connection> connect () {
-        Connection connection;
-        try{
-            connection = dataSource.getConnection();
+
+        try(Connection connection = this.getConnection()){
             return Optional.of(connection);
         }catch (Exception e){
             logger.error("Error al conectarse a la base de datos "+e);
@@ -70,6 +69,7 @@ public class DatabaseManager {
 
         config.setJdbcUrl(url);
 
+
         dataSource = new HikariDataSource(config);
 
         try {
@@ -87,38 +87,17 @@ public class DatabaseManager {
 
     public void initializeDB(String initScriptPath) throws FileNotFoundException, SQLException {
 
-        Reader reader = new BufferedReader(new FileReader(getClass().getClassLoader().getResource(initScriptPath).getPath()));
-        ScriptRunner sr = new ScriptRunner(dataSource.getConnection());
-        sr.runScript(reader);
-
-    }
-
-    public ResultSet executeQuery(String sqlSentence, Object... params) throws SQLException {
-
-        try( PreparedStatement preparedStatement = dataSource.getConnection().prepareStatement(sqlSentence)){
-
-            Arrays.stream(params).forEach(param -> {
-                try {
-                    preparedStatement.setObject(Arrays.asList(params).indexOf(param)+1, param);
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
-                }
-            });
-
-            return preparedStatement.executeQuery();
-
-        }catch (Exception e){
-            logger.error("Error al lanzar la consultar SQL");
+        try(Connection connection = this.getConnection()){
+            Reader reader = new BufferedReader(new FileReader(getClass().getClassLoader().getResource(initScriptPath).getPath()));
+            ScriptRunner sr = new ScriptRunner(connection);
+            sr.runScript(reader);
         }
 
-        return null;
-
     }
-
 
     public int executeUpdate(String sqlSentence, Object... params){
 
-        try( PreparedStatement preparedStatement = dataSource.getConnection().prepareStatement(sqlSentence)){
+        try(Connection connection = this.getConnection(); PreparedStatement preparedStatement = connection.prepareStatement(sqlSentence)){
 
             Arrays.stream(params).forEach(param -> {
                 try {
@@ -131,12 +110,15 @@ public class DatabaseManager {
             return preparedStatement.executeUpdate();
 
         }catch (Exception e){
-            logger.error("Error al lanzar la consultar SQL");
+            logger.error("Error al lanzar la consultar SQL", e);
         }
 
         return 0;
     }
 
 
+    public synchronized Connection getConnection() throws SQLException {
+        return dataSource.getConnection();
+    }
 
 }

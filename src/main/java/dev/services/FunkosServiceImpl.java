@@ -1,19 +1,26 @@
 package dev.services;
 
 import dev.database.models.Funko;
+import dev.database.models.Modelo;
 import dev.exceptions.FunkoNoEncontrado;
 import dev.repositories.FunkosAsyncRepo;
 import dev.repositories.FunkosAsyncRepoImpl;
 import dev.services.cache.FunkosCache;
 import dev.services.cache.FunkosCacheImpl;
 import dev.services.database.DatabaseManager;
+import dev.services.storage.FunkosStorageImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class FunkosServiceImpl {
 
@@ -23,19 +30,23 @@ public class FunkosServiceImpl {
     private final FunkosAsyncRepoImpl repository;
     private final FunkosCacheImpl cache;
     private final DatabaseManager databaseManager;
+    private final FunkosStorageImpl storage;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
 
-    private FunkosServiceImpl(FunkosAsyncRepoImpl repo, DatabaseManager databaseManager, FunkosCacheImpl cache) {
+
+    private FunkosServiceImpl(FunkosAsyncRepoImpl repo, DatabaseManager databaseManager, FunkosCacheImpl cache, FunkosStorageImpl storage) {
 
         this.cache = cache;
         this.repository = repo;
         this.databaseManager = databaseManager;
+        this.storage = storage;
 
     }
 
-    public static FunkosServiceImpl getInstance(FunkosAsyncRepoImpl repo, DatabaseManager databaseManager, FunkosCacheImpl cache){
+    public static synchronized FunkosServiceImpl getInstance(FunkosAsyncRepoImpl repo, DatabaseManager databaseManager, FunkosCacheImpl cache, FunkosStorageImpl storage){
         if (instance == null) {
-            instance = new FunkosServiceImpl(repo, databaseManager, cache);
+            instance = new FunkosServiceImpl(repo, databaseManager, cache, storage);
         }
         return instance;
     }
@@ -83,5 +94,39 @@ public class FunkosServiceImpl {
         return deleted;
     }
 
+    public boolean backup() {
+        logger.info("Realizando backup de la base de datos");
+        return storage.exportDBToJSON();
+    }
+
+    public Optional<Funko> mostExpensiveFunko() throws ExecutionException, InterruptedException {
+        List<Funko> funkos = this.findAll();
+        return funkos.stream().max(Comparator.comparingDouble(Funko::precio));
+    }
+
+    public double averagePrice() throws ExecutionException, InterruptedException {
+        List<Funko> funkos = this.findAll();
+        return funkos.stream().mapToDouble(Funko::precio).average().orElse(0.0);
+    }
+
+    public Map<Modelo, List<Funko>> funkosGroupedByModel() throws ExecutionException, InterruptedException {
+        List<Funko> funkos = this.findAll();
+        return funkos.stream().collect(Collectors.groupingBy(Funko::modelo));
+    }
+
+    public Map<Modelo, Integer> numFunkosGroupedByModel() throws ExecutionException, InterruptedException {
+        List<Funko> funkos = this.findAll();
+        return funkos.stream().collect(Collectors.groupingBy(Funko::modelo, Collectors.summingInt(e -> 1)));
+    }
+
+    public List<Funko> funkosReleasedInYear(int ano) throws ExecutionException, InterruptedException {
+        List<Funko> funkos = this.findAll();
+        return funkos.stream().filter(fk -> fk.fechaLanzamiento().getYear() == ano).toList();
+    }
+
+    public List<Funko> funkosContainWord(String palabra) throws ExecutionException, InterruptedException {
+        List<Funko> funkos = this.findAll();
+        return funkos.stream().filter(fk -> fk.nombre().toLowerCase().contains(palabra.toLowerCase())).toList();
+    }
 
 }

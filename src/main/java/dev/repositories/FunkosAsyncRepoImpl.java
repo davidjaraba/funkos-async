@@ -10,9 +10,10 @@ import dev.services.generator.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +32,7 @@ public class FunkosAsyncRepoImpl implements FunkosAsyncRepo {
         this.idGenerator = idGenerator;
     }
 
-    public static FunkosAsyncRepoImpl getInstance(IdGenerator idGenerator, DatabaseManager databaseMgr){
+    public static synchronized FunkosAsyncRepoImpl getInstance(IdGenerator idGenerator, DatabaseManager databaseMgr){
         if (instance == null){
             instance = new FunkosAsyncRepoImpl(idGenerator, databaseMgr);
         }
@@ -40,11 +41,14 @@ public class FunkosAsyncRepoImpl implements FunkosAsyncRepo {
 
     @Override
     public CompletableFuture<Optional<Funko>> findByName(String name) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                String sql = "SELECT * FROM funkos WHERE nombre = ?";
+        String sql = "SELECT * FROM funkos WHERE nombre = ?";
 
-                ResultSet resultSet = databaseManager.executeQuery(sql, name);
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection connection = databaseManager.getConnection(); PreparedStatement preparedStatement = connection.prepareStatement(sql);){
+
+                preparedStatement.setString(1, name);
+
+                ResultSet resultSet = preparedStatement.executeQuery();
 
                 if (resultSet.next()) {
                     return Optional.of(Funko.builder().codigo(UUID.fromString(resultSet.getString("cod")))
@@ -65,14 +69,15 @@ public class FunkosAsyncRepoImpl implements FunkosAsyncRepo {
     }
 
     @Override
-    public CompletableFuture<List<Funko>> findAll(){
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                String sql = "SELECT * FROM funkos";
+    public CompletableFuture<List<Funko>> findAll() {
+        String sql = "SELECT * FROM funkos";
 
-                ResultSet resultSet = databaseManager.executeQuery(sql);
+        return CompletableFuture.supplyAsync(() -> {
+            try(Connection connection = databaseManager.getConnection(); PreparedStatement preparedStatement = connection.prepareStatement(sql);){
 
                 List<Funko> funkos = new ArrayList<>();
+
+                ResultSet resultSet = preparedStatement.executeQuery();
 
                 while (resultSet.next()) {
 
@@ -99,11 +104,14 @@ public class FunkosAsyncRepoImpl implements FunkosAsyncRepo {
 
     @Override
     public CompletableFuture<Optional<Funko>> findById(UUID id) {
-        return CompletableFuture.supplyAsync(()->{
-            try {
-                String sql = "SELECT * FROM funkos WHERE nombre = ?";
+        String sql = "SELECT * FROM funkos WHERE nombre = ?";
 
-                ResultSet resultSet = databaseManager.executeQuery(sql, id);
+        return CompletableFuture.supplyAsync(()->{
+            try (Connection connection = databaseManager.getConnection(); PreparedStatement preparedStatement = connection.prepareStatement(sql);){
+
+                preparedStatement.setString(1, id.toString());
+
+                ResultSet resultSet = preparedStatement.executeQuery();
 
                 if (resultSet.next()) {
                     return Optional.of(Funko.builder().codigo(UUID.fromString(resultSet.getString("cod")))
