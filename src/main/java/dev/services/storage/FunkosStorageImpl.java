@@ -1,5 +1,7 @@
 package dev.services.storage;
 
+import com.google.gson.GsonBuilder;
+import dev.adapters.LocalDateAdapter;
 import dev.database.models.Funko;
 import dev.database.models.Modelo;
 import dev.repositories.FunkosAsyncRepoImpl;
@@ -8,7 +10,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import com.google.gson.Gson;
+
 
 public class FunkosStorageImpl {
 
@@ -39,13 +42,14 @@ public class FunkosStorageImpl {
 
     public void importCSVToDB() throws IOException {
 
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
+
         String dir = getDataDir();
         String funkosCSV = dir+File.separator+ "funkos.csv";
         Path filePath = Paths.get(funkosCSV);
         if (!Files.exists(filePath)) {
             throw new FileNotFoundException("File not found: " + funkosCSV);
         }
-        ExecutorService executorService = Executors.newFixedThreadPool(2);
 
         CompletableFuture<List<Funko>> funkosFuture = CompletableFuture.supplyAsync(() -> {
             try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toFile()))) {
@@ -78,6 +82,39 @@ public class FunkosStorageImpl {
 
     }
 
+    public boolean exportDBToJSON() {
+
+        String dir = getDataDir();
+        String funkosCSV = dir+File.separator+ "funkos.json";
+
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+        CompletableFuture.supplyAsync(() -> {
+
+            try {
+
+                List<Funko> funkos = repository.findAll().get();
+
+                Gson gson = new GsonBuilder().setPrettyPrinting().registerTypeAdapter(LocalDate.class, new LocalDateAdapter()).create();
+
+                String json = gson.toJson(funkos);
+
+                Files.writeString(new File(funkosCSV).toPath(), json);
+
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException | IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            return true;
+        },executorService);
+
+        executorService.shutdown();
+
+        return true;
+
+    }
 
 
 }

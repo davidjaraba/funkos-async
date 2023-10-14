@@ -27,10 +27,7 @@ public class FunkosCacheImpl implements FunkosCache<UUID, Funko> {
         });
 
         this.executorService = Executors.newSingleThreadScheduledExecutor();
-        this.executorService.scheduleAtFixedRate(() -> {
-            logger.info("vaciando cache");
-            this.clear();
-        }, 0, 2, TimeUnit.MINUTES);
+        this.executorService.scheduleAtFixedRate(this::clear, 2, 2, TimeUnit.MINUTES);
 
     }
 
@@ -60,6 +57,7 @@ public class FunkosCacheImpl implements FunkosCache<UUID, Funko> {
 
     @Override
     public void shutdown() {
+        logger.info("Cerrando cache");
         executorService.shutdown();
     }
 
