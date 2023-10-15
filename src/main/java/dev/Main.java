@@ -21,7 +21,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
 
-        IdGenerator idGenerator = new IdGenerator();
+        IdGenerator idGenerator = IdGenerator.getInstance();
         DatabaseManager databaseManager = DatabaseManager.getInstance();
         FunkosAsyncRepoImpl funkosAsyncRepoImpl = FunkosAsyncRepoImpl.getInstance(idGenerator, databaseManager);
         FunkosStorageImpl storage = new FunkosStorageImpl(funkosAsyncRepoImpl);
