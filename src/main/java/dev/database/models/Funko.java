@@ -1,6 +1,6 @@
 package dev.database.models;
 
-import dev.locale.EspanaLocale;
+import dev.locale.EsLocale;
 import lombok.Builder;
 
 import java.time.LocalDate;
@@ -15,7 +15,7 @@ public record Funko(UUID codigo, long myid,String nombre, Modelo modelo, double 
     public String toString() {
 
         return String.format("Código: %s\n MyId: %s\n Nombre: %s\nModelo: %s\nPrecio: %s\nFecha de lanzamiento: %s\n",
-                codigo, myid, nombre, modelo, EspanaLocale.toLocalMoney(precio), EspanaLocale.toLocalDate(fechaLanzamiento));
+                codigo, myid, nombre, modelo, EsLocale.toLocalMoney(precio), EsLocale.toLocalDate(fechaLanzamiento));
 
     }
 

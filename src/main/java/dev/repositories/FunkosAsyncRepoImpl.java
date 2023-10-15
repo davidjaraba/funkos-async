@@ -104,7 +104,7 @@ public class FunkosAsyncRepoImpl implements FunkosAsyncRepo {
 
     @Override
     public CompletableFuture<Optional<Funko>> findById(UUID id) {
-        String sql = "SELECT * FROM funkos WHERE nombre = ?";
+        String sql = "SELECT * FROM funkos WHERE cod = ?";
 
         return CompletableFuture.supplyAsync(()->{
             try (Connection connection = databaseManager.getConnection(); PreparedStatement preparedStatement = connection.prepareStatement(sql);){
@@ -196,4 +196,24 @@ public class FunkosAsyncRepoImpl implements FunkosAsyncRepo {
            }
         });
     }
+
+    @Override
+    public CompletableFuture<Void> deleteAll(){
+        return CompletableFuture.supplyAsync(()->{
+            try{
+                String sql = "DELETE FROM funkos";
+                int res = databaseManager.executeUpdate(sql);
+
+                if (res == 0) {
+                    logger.error("Error al eliminar los funkos");
+                    throw new FunkoException("Error al eliminar los funkos");
+                }
+
+            }catch (Exception e){
+                logger.error("Error al actualizar el funko ", e);
+            }
+            return null;
+        });
+    }
+
 }

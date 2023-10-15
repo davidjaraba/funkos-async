@@ -18,4 +18,6 @@ public interface CRUDRepo<T, ID> {
 
     CompletableFuture<Boolean> delete(ID id) throws SQLException, IOException;
 
+    CompletableFuture<Void> deleteAll() throws SQLException;
+
 }

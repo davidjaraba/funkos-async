@@ -7,9 +7,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Locale;
 
-public class EspanaLocale {
+public class EsLocale {
 
     private static final Locale localeEs = new Locale("es", "ES");
+
+    private EsLocale() {
+    }
 
     public static String toLocalDate(LocalDate date) {
         return date.format(
